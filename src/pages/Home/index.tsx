@@ -1,4 +1,4 @@
-import { Play } from 'phosphor-react'
+import { HandPalm, Play } from 'phosphor-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,6 +11,7 @@ import {
   MinutesAmountInput,
   Separator,
   StartCountDownButton,
+  StopCountDownButton,
   TaskInput,
 } from './styles'
 import { useEffect, useState } from 'react'
@@ -30,6 +31,7 @@ interface Cycle {
   task: string
   minutesAmount: number
   startDate: Date
+  interruptedDate?: Date
 }
 
 export function Home() {
@@ -41,23 +43,29 @@ export function Home() {
     resolver: zodResolver(newCycleFormValidationSchema),
     defaultValues: {
       task: '',
-      minutesAmount: 5,
+      minutesAmount: 0,
     },
   })
 
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
 
   useEffect(() => {
+    let interval: number
+
     if (activeCycle) {
-      setInterval(() => {
+      interval = setInterval(() => {
         setAmountSecondsPassed(
           differenceInSeconds(new Date(), activeCycle.startDate),
         )
       }, 1000)
+
+      return () => {
+        clearInterval(interval)
+      }
     }
   }, [activeCycle]) // como o useEffect depende de uma variável externa é necessário passar ela como uma dependência, lembrando que devido a dependencia o useeffect será executado sempre que o valor dela alterar
 
-  function HandleNewTaskTime(data: NewCicleFormData) {
+  function handleNewTaskTime(data: NewCicleFormData) {
     const newCycle = {
       id: String(new Date().getTime()),
       task: data.task,
@@ -67,7 +75,21 @@ export function Home() {
 
     setCycles((state) => [...state, newCycle]) // sempre que uma alteração de estado depender do formato anterior usamos uma arrow fuction para repassar o estado anterior
     setActiveCycleId(newCycle.id)
+    setAmountSecondsPassed(0)
     reset()
+  }
+
+  function handleInterruptNewCycle() {
+    setCycles(
+      cycles.map((cycle) => {
+        if (cycle.id === activeCycleId) {
+          return { ...cycle, interruptedDate: new Date() }
+        } else {
+          return cycle
+        }
+      }),
+    )
+    setActiveCycleId(null)
   }
 
   const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0
@@ -79,19 +101,26 @@ export function Home() {
 
   const minutes = String(minutesAmout).padStart(2, '0')
   const seconds = String(secondsAmount).padStart(2, '0')
+  console.log(cycles)
+  useEffect(() => {
+    if (activeCycle) {
+      document.title = `${minutes}:${seconds}`
+    }
+  }, [minutes, seconds, activeCycle])
 
   const task = watch('task')
   const isSubmitDisabled = !task
 
   return (
     <HomeContainer>
-      <form action="" onSubmit={handleSubmit(HandleNewTaskTime)}>
+      <form action="" onSubmit={handleSubmit(handleNewTaskTime)}>
         <FormContainer>
           <label htmlFor="task">Vou trabalhar em</label>
           <TaskInput
             id="task"
             placeholder="Dê um nome para seu projeto"
             list="task-suggestions"
+            disabled={!!activeCycle}
             {...register('task')}
           />
           <datalist id="task-suggestions">
@@ -105,6 +134,7 @@ export function Home() {
             type="number"
             id="minutesAmount"
             placeholder="00"
+            disabled={!!activeCycle}
             step={5}
             min={5}
             max={60}
@@ -121,10 +151,17 @@ export function Home() {
           <span>{seconds[1]}</span>
         </CountDownContainer>
 
-        <StartCountDownButton disabled={isSubmitDisabled} type="submit">
-          <Play size={24} />
-          Começar
-        </StartCountDownButton>
+        {activeCycle ? (
+          <StopCountDownButton onClick={handleInterruptNewCycle} type="button">
+            <HandPalm size={24} />
+            Interromper
+          </StopCountDownButton>
+        ) : (
+          <StartCountDownButton disabled={isSubmitDisabled} type="submit">
+            <Play size={24} />
+            Começar
+          </StartCountDownButton>
+        )}
       </form>
     </HomeContainer>
   )
