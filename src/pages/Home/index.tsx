@@ -1,7 +1,8 @@
 import { Play } from 'phosphor-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { string, z } from 'zod'
+import { z } from 'zod'
+import { differenceInSeconds } from 'date-fns'
 
 import {
   CountDownContainer,
@@ -12,7 +13,7 @@ import {
   StartCountDownButton,
   TaskInput,
 } from './styles'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const newCycleFormValidationSchema = z.object({
   task: z.string().min(1, 'Informe a tarefa'),
@@ -28,6 +29,7 @@ interface Cycle {
   id: string
   task: string
   minutesAmount: number
+  startDate: Date
 }
 
 export function Home() {
@@ -43,19 +45,30 @@ export function Home() {
     },
   })
 
+  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
+
+  useEffect(() => {
+    if (activeCycle) {
+      setInterval(() => {
+        setAmountSecondsPassed(
+          differenceInSeconds(new Date(), activeCycle.startDate),
+        )
+      }, 1000)
+    }
+  }, [activeCycle]) // como o useEffect depende de uma variável externa é necessário passar ela como uma dependência, lembrando que devido a dependencia o useeffect será executado sempre que o valor dela alterar
+
   function HandleNewTaskTime(data: NewCicleFormData) {
     const newCycle = {
       id: String(new Date().getTime()),
       task: data.task,
       minutesAmount: data.minutesAmount,
+      startDate: new Date(),
     }
 
     setCycles((state) => [...state, newCycle]) // sempre que uma alteração de estado depender do formato anterior usamos uma arrow fuction para repassar o estado anterior
     setActiveCycleId(newCycle.id)
     reset()
   }
-
-  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
 
   const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0
 
@@ -66,8 +79,6 @@ export function Home() {
 
   const minutes = String(minutesAmout).padStart(2, '0')
   const seconds = String(secondsAmount).padStart(2, '0')
-
-  console.log(activeCycle)
 
   const task = watch('task')
   const isSubmitDisabled = !task
