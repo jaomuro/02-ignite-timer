@@ -20,7 +20,7 @@ const newCycleFormValidationSchema = z.object({
   task: z.string().min(1, 'Informe a tarefa'),
   minutesAmount: z
     .number()
-    .min(5, 'O ciclo precisa ter no mínimo 5 minutos')
+    .min(1, 'O ciclo precisa ter no mínimo 5 minutos')
     .max(60, 'O ciclo precisa ser no máximo 60 minutos'),
 })
 
@@ -32,6 +32,7 @@ interface Cycle {
   minutesAmount: number
   startDate: Date
   interruptedDate?: Date
+  finishedDate?: Date
 }
 
 export function Home() {
@@ -48,22 +49,41 @@ export function Home() {
   })
 
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
+  const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0
 
   useEffect(() => {
     let interval: number
 
     if (activeCycle) {
       interval = setInterval(() => {
-        setAmountSecondsPassed(
-          differenceInSeconds(new Date(), activeCycle.startDate),
+        const secondsDifference = differenceInSeconds(
+          new Date(),
+          activeCycle.startDate,
         )
+
+        if (secondsDifference >= totalSeconds) {
+          setCycles((state) =>
+            state.map((cycle) => {
+              if (cycle.id === activeCycleId) {
+                return { ...cycle, finishedDate: new Date() }
+              } else {
+                return cycle
+              }
+            }),
+          )
+          clearInterval(interval)
+          setAmountSecondsPassed(totalSeconds)
+          setActiveCycleId(null)
+        } else {
+          setAmountSecondsPassed(secondsDifference)
+        }
       }, 1000)
 
       return () => {
         clearInterval(interval)
       }
     }
-  }, [activeCycle]) // como o useEffect depende de uma variável externa é necessário passar ela como uma dependência, lembrando que devido a dependencia o useeffect será executado sempre que o valor dela alterar
+  }, [activeCycle, totalSeconds, activeCycleId]) // como o useEffect depende de uma variável externa é necessário passar ela como uma dependência, lembrando que devido a dependencia o useeffect será executado sempre que o valor dela alterar
 
   function handleNewTaskTime(data: NewCicleFormData) {
     const newCycle = {
@@ -80,8 +100,8 @@ export function Home() {
   }
 
   function handleInterruptNewCycle() {
-    setCycles(
-      cycles.map((cycle) => {
+    setCycles((state) =>
+      state.map((cycle) => {
         if (cycle.id === activeCycleId) {
           return { ...cycle, interruptedDate: new Date() }
         } else {
@@ -92,8 +112,6 @@ export function Home() {
     setActiveCycleId(null)
   }
 
-  const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0
-
   const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0
 
   const minutesAmout = Math.floor(currentSeconds / 60)
@@ -101,10 +119,12 @@ export function Home() {
 
   const minutes = String(minutesAmout).padStart(2, '0')
   const seconds = String(secondsAmount).padStart(2, '0')
-  console.log(cycles)
+
   useEffect(() => {
     if (activeCycle) {
       document.title = `${minutes}:${seconds}`
+    } else {
+      document.title = 'Ignite Timer'
     }
   }, [minutes, seconds, activeCycle])
 
@@ -114,43 +134,6 @@ export function Home() {
   return (
     <HomeContainer>
       <form action="" onSubmit={handleSubmit(handleNewTaskTime)}>
-        <FormContainer>
-          <label htmlFor="task">Vou trabalhar em</label>
-          <TaskInput
-            id="task"
-            placeholder="Dê um nome para seu projeto"
-            list="task-suggestions"
-            disabled={!!activeCycle}
-            {...register('task')}
-          />
-          <datalist id="task-suggestions">
-            <option value="Projeto 1" />
-            <option value="Projeto 3" />
-            <option value="Projeto 2" />
-            <option value="Banana" />
-          </datalist>
-          <label htmlFor="minutesAmount">durante</label>
-          <MinutesAmountInput
-            type="number"
-            id="minutesAmount"
-            placeholder="00"
-            disabled={!!activeCycle}
-            step={5}
-            min={5}
-            max={60}
-            {...register('minutesAmount', { valueAsNumber: true })}
-          />
-          <span>minutos.</span>
-        </FormContainer>
-
-        <CountDownContainer>
-          <span>{minutes[0]}</span>
-          <span>{minutes[1]}</span>
-          <Separator>:</Separator>
-          <span>{seconds[0]}</span>
-          <span>{seconds[1]}</span>
-        </CountDownContainer>
-
         {activeCycle ? (
           <StopCountDownButton onClick={handleInterruptNewCycle} type="button">
             <HandPalm size={24} />
