@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect } from 'react'
 import { CountDownContainer, Separator } from './styles'
 import { differenceInSeconds } from 'date-fns'
+import { CyclesContext } from '../../../../contexts/CyclesContexts'
 
 export function Countdown() {
-  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0)
+  const {
+    activeCycle,
+    activeCycleId,
+    markCurrentCycleAsFinished,
+    amountSecondsPassed,
+    refreshAmountSecondsPassed,
+  } = useContext(CyclesContext)
 
   const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0
 
@@ -18,20 +25,11 @@ export function Countdown() {
         )
 
         if (secondsDifference >= totalSeconds) {
-          setCycles((state) =>
-            state.map((cycle) => {
-              if (cycle.id === activeCycleId) {
-                return { ...cycle, finishedDate: new Date() }
-              } else {
-                return cycle
-              }
-            }),
-          )
+          markCurrentCycleAsFinished()
           clearInterval(interval)
-          setAmountSecondsPassed(totalSeconds)
-          setActiveCycleId(null)
+          refreshAmountSecondsPassed(totalSeconds)
         } else {
-          setAmountSecondsPassed(secondsDifference)
+          refreshAmountSecondsPassed(secondsDifference)
         }
       }, 1000)
 
@@ -39,7 +37,29 @@ export function Countdown() {
         clearInterval(interval)
       }
     }
-  }, [activeCycle, totalSeconds, activeCycleId]) // como o useEffect depende de uma variável externa é necessário passar ela como uma dependência, lembrando que devido a dependencia o useeffect será executado sempre que o valor dela alterar
+  }, [
+    activeCycle,
+    totalSeconds,
+    activeCycleId,
+    markCurrentCycleAsFinished,
+    refreshAmountSecondsPassed,
+  ]) // como o useEffect depende de uma variável externa é necessário passar ela como uma dependência, lembrando que devido a dependencia o useeffect será executado sempre que o valor dela alterar
+
+  const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0
+
+  const minutesAmout = Math.floor(currentSeconds / 60)
+  const secondsAmount = currentSeconds % 60
+
+  const minutes = String(minutesAmout).padStart(2, '0')
+  const seconds = String(secondsAmount).padStart(2, '0')
+
+  useEffect(() => {
+    if (activeCycle) {
+      document.title = `${minutes}:${seconds}`
+    } else {
+      document.title = 'Ignite Timer'
+    }
+  }, [minutes, seconds, activeCycle])
 
   return (
     <CountDownContainer>
