@@ -67,8 +67,6 @@ export function CyclesContextProvider({
     setCycles((state) => [...state, newCycle]) // sempre que uma alteração de estado depender do formato anterior usamos uma arrow fuction para repassar o estado anterior
     setActiveCycleId(newCycle.id)
     refreshAmountSecondsPassed(0)
-
-    // reset()
   }
 
   function interruptCurrentCycle() {
