@@ -44,17 +44,14 @@ export function CyclesContextProvider({
       cycles: [],
       activeCycleId: null,
     },
-    () => {
+    (inicialState) => {
       const storedDataAsJson = localStorage.getItem(
         '@ignite-timer:cycles-state-1.0.0',
       )
       if (storedDataAsJson) {
         return JSON.parse(storedDataAsJson)
       } else {
-        return {
-          cycles: [],
-          activeCycleId: null,
-        }
+        return inicialState
       }
     },
   )
